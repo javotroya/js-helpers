@@ -2,27 +2,33 @@ if (typeof jQuery === 'undefined') {
     throw new Error('We need jQuery if we want to work together bro')
 }
 
-var pleaseWaitDiv = jQuery('<div class="modal" id="pleaseWaitDialog"><div class="modal-dialog modal-lg"><div class="modal-content"></div></div></div>');
-jQuery('body').append(pleaseWaitDiv);
-
-var loadingBar;
-loadingBar = loadingBar || (function () {
-        var generateBar = '<div class="modal-header"><h1><i>Procesando...</i></h1></div><div class="progress progress-striped active"><div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 10%;"></div></div>';
-        return {
-            showBar: function (div) {
-                jQuery(div).html(generateBar);
-                i = 10;
-                setInterval(function () {
-                    jQuery('.progress-bar').css('width', i + '%');
-                    i = i + 15;
-                }, 200)
-            }
-        };
-    })();
-
 (function ($) {
+    var loadingDiv = $('<div class="modal" id="loading-div"><div class="modal-dialog modal-lg"><div class="modal-content"></div></div></div>');
+    $('body').append(loadingDiv);
+
+    var loadingBar;
+    loadingBar = loadingBar || (function () {
+            var generateBar = '<div class="modal-header">';
+            generateBar += '<h1><i>Loading...</i></h1>';
+            generateBar += '</div>';
+            generateBar += '<div class="progress progress-striped active">';
+            generateBar += '<div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 10%;">';
+            generateBar += '</div>';
+            generateBar += '</div>';
+            return {
+                showProgressBar: function (div) {
+                    $(div).html(generateBar);
+                    i = 10;
+                    setInterval(function () {
+                        jQuery('.progress-bar').css('width', i + '%');
+                        i = i + 15;
+                    }, 200)
+                }
+            };
+        })();
+
     $.fn.extend({
-        dmodal: function (options) {
+        asyncModal: function (options) {
             var defaults = {
                 children: (typeof(options) === 'string') ? options : '',
                 trigger: 'click',
@@ -41,13 +47,13 @@ loadingBar = loadingBar || (function () {
                 modalElement = $('.modal');
                 modalContent = $('.modal-content');
                 modalElement.modal('hide');
-                loadingBar.showBar('.modal-content');
+                loadingBar.showProgressBar('.modal-content');
                 modalContent.load(url);
                 modalElement.modal('show');
             });
             if (opts.trigger == 'auto' && opts.ldURL != null) {
                 modalElement.modal('hide');
-                loadingBar.showBar('.modal-content');
+                loadingBar.showProgressBar('.modal-content');
                 modalContent.load(opts.ldURL);
                 modalElement.modal('show');
             }
@@ -57,22 +63,22 @@ loadingBar = loadingBar || (function () {
 
 (function ($) {
     $.fn.extend({
-        saveformdata: function (options) {
+        saveFormData: function (options) {
 
             var defaults = {
-                element: (typeof(options) === 'string') ? options : '#error-message',
-                child: '',
-                sbmtURL: '',
-                callback: function (param) {
+                element : (typeof(options) === 'string') ? options : '#error-message',
+                child : null,
+                submitURL : null,
+                callback : function (param) {
                 },
-                cbOnfail: false,
-                reloadHtml: false,
-                rlUrl: '',
-                rlContainer: '',
-                closeModal: false,
-                mdElement: '.modal',
-                clrForm: '',
-                data: ''
+                onCallbackFail : false,
+                htmlReload : false,
+                htmlReloadURL : null,
+                htmlReloadContainer : null,
+                closeModal : false,
+                modalElement : '.modal',
+                clearFormOnDone : null,
+                data : ''
             };
 
             var opts = $.extend({}, defaults, options);
@@ -83,47 +89,55 @@ loadingBar = loadingBar || (function () {
                     event.preventDefault();
 
                     var data = (opts.data != '') ? opts.data : $(this).serialize();
-                    var url = (opts.sbmtURL != '') ? opts.sbmtURL : $(this).attr('action');
-                    var savedatamsgcontainer = $(opts.element);
+                    var url = (opts.submitURL != '') ? opts.submitURL : $(this).attr('action');
+                    var saveDataMessageContainer = $(opts.element);
 
-                    savedatamsgcontainer.html('Procesando, por favor espere...').removeClass().addClass('alert alert-info flying-message');
+                    saveDataMessageContainer.html('Loading, please wait...')
+                        .removeClass()
+                        .addClass('alert alert-info flying-message');
 
-                    savedatamsgcontainer.slideDown('slow');
+                    saveDataMessageContainer.slideDown('slow');
 
-                    savedatamsgcontainer.on('click', function () {
-                        jQuery(this).slideUp('slow');
+                    saveDataMessageContainer.on('click', function () {
+                        $(this).slideUp('slow');
                     });
 
                     $.post(url, data, function (json) {
                             if (json.error) {
-                                savedatamsgcontainer.removeClass('alert-info').addClass('alert-danger').html(json.message);
+                                saveDataMessageContainer.removeClass('alert-info')
+                                    .addClass('alert-danger')
+                                    .html(json.message);
                             }
                             else {
-                                savedatamsgcontainer.removeClass('alert-info').addClass('alert-success').html(json.message);
+                                saveDataMessageContainer.removeClass('alert-info')
+                                    .addClass('alert-success')
+                                    .html(json.message);
                             }
                         }, 'json')
                         .done(function (response) {
                             setTimeout(function () {
-                                savedatamsgcontainer.slideUp('slow')
+                                saveDataMessageContainer.slideUp('slow')
                             }, 3000);
                             if (!response.error) {
-                                if (opts.reloadhtml) {
-                                    loadingBar.showBar(opts.rlContainer);
-                                    $(opts.rlContainer).load(opts.rlUrl);
+                                if (opts.htmlReload &&
+                                    (opts.htmlReloadContainer !== null) &&
+                                    opts.htmlReloadURL !== null) {
+                                    loadingBar.showBar(opts.htmlReloadContainer);
+                                    $(opts.htmlReloadContainer).load(opts.htmlReloadURL);
                                 }
-                                if (opts.clrForm != '') {
-                                    $(opts.clrForm).each(function () {
+                                if (opts.clearFormOnDone !== null) {
+                                    $(opts.clearFormOnDone).each(function () {
                                         this.reset();
                                     })
                                 }
                                 if (opts.closeModal)
-                                    $(opts.mdElement).modal('hide');
+                                    $(opts.htmlReloadContainer).modal('hide');
 
-                                if (typeof(opts.callback) === 'function') {
+                                if (typeof opts.callback === 'function') {
                                     opts.callback.call(this, response);
                                 }
                             } else {
-                                if (opts.cbOnfail) {
+                                if (opts.onCallbackFail) {
                                     if (typeof(opts.callback === 'function')) {
                                         opts.callback.call(this, response);
                                     }
@@ -131,8 +145,10 @@ loadingBar = loadingBar || (function () {
                             }
                         })
                         .fail(function (jqxhr, textStatus, error) {
-                            var err = textStatus + ", " + error;
-                            savedatamsgcontainer.removeClass('alert-info').addClass('alert-danger').html('Lo sentimos, hubo un problema al procesar tu solicitud ' + err);
+                            var err = textStatus + ', ' + error;
+                            saveDataMessageContainer.removeClass('alert-info')
+                                .addClass('alert-danger')
+                                .html('Sorry we couldn\'t process your request ' + err);
                         })
                 })
             })
