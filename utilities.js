@@ -1,136 +1,144 @@
-if (typeof jQuery === 'undefined') { throw new Error('We need jQuery if we want to work together bro') }
+if (typeof jQuery === 'undefined') {
+    throw new Error('We need jQuery if we want to work together bro')
+}
 
 var pleaseWaitDiv = jQuery('<div class="modal" id="pleaseWaitDialog"><div class="modal-dialog modal-lg"><div class="modal-content"></div></div></div>');
 jQuery('body').append(pleaseWaitDiv);
 
 var loadingBar;
-loadingBar = loadingBar || (function(){
-    var generateBar = '<div class="modal-header"><h1><i>Procesando...</i></h1></div><div class="progress progress-striped active"><div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 10%;"></div></div>';
-    return {
-        showBar: function(div){
-            jQuery(div).html(generateBar);
-            i = 10;
-            setInterval(function(){
-                jQuery('.progress-bar').css('width',i + '%');
-                i=i+15;
-            }, 200)
+loadingBar = loadingBar || (function () {
+        var generateBar = '<div class="modal-header"><h1><i>Procesando...</i></h1></div><div class="progress progress-striped active"><div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 10%;"></div></div>';
+        return {
+            showBar: function (div) {
+                jQuery(div).html(generateBar);
+                i = 10;
+                setInterval(function () {
+                    jQuery('.progress-bar').css('width', i + '%');
+                    i = i + 15;
+                }, 200)
+            }
+        };
+    })();
+
+(function ($) {
+    $.fn.extend({
+        dmodal: function (options) {
+            var defaults = {
+                children: (typeof(options) === 'string') ? options : '',
+                trigger: 'click',
+                ldURL: null,
+                callback: function (param) {
+                }
+            };
+
+            var obj = $(this);
+
+            var opts = $.extend({}, defaults, options);
+
+            obj.on(opts.trigger, opts.children, function (event) {
+                event.preventDefault();
+                url = (opts.ldURL != null) ? opts.ldURL : $(this).attr('href');
+                modalElement = $('.modal');
+                modalContent = $('.modal-content');
+                modalElement.modal('hide');
+                loadingBar.showBar('.modal-content');
+                modalContent.load(url);
+                modalElement.modal('show');
+            });
+            if (opts.trigger == 'auto' && opts.ldURL != null) {
+                modalElement.modal('hide');
+                loadingBar.showBar('.modal-content');
+                modalContent.load(opts.ldURL);
+                modalElement.modal('show');
+            }
         }
-    };
-})();
+    });
+})(jQuery);
 
-(function(jQuery){
-	jQuery.fn.extend({
-		dmodal : function(options){
-			var defaults = {
-				children : (typeof(options) === 'string') ? options : '',
-				trigger : 'click',
-				ldURL : null,
-				callback : function(param){},
-			};
+(function ($) {
+    $.fn.extend({
+        saveformdata: function (options) {
 
-			var obj = jQuery(this);
+            var defaults = {
+                element: (typeof(options) === 'string') ? options : '#error-message',
+                child: '',
+                sbmtURL: '',
+                callback: function (param) {
+                },
+                cbOnfail: false,
+                reloadHtml: false,
+                rlUrl: '',
+                rlContainer: '',
+                closeModal: false,
+                mdElement: '.modal',
+                clrForm: '',
+                data: ''
+            };
 
-			var opts = jQuery.extend({}, defaults, options); 
+            var opts = $.extend({}, defaults, options);
 
-			obj.on(opts.trigger, opts.children, function(event){
-				event.preventDefault();
-				url = (opts.ldURL != null) ? opts.ldURL : jQuery(this).attr('href');
-				jQuery('.modal').modal('hide');
-				loadingBar.showBar('.modal-content');
-				jQuery('.modal-content').load(url);
-				jQuery('.modal').modal('show');
-				});
-			if(opts.trigger == 'auto' && opts.ldURL != null) {
-				jQuery('.modal').modal('hide');
-				loadingBar.showBar('.modal-content');
-				jQuery('.modal-content').load(opts.ldURL);
-				jQuery('.modal').modal('show');
-				}
-			}
-		});
-	})(jQuery);
+            this.each(function () {
+                var obj = $(this);
+                obj.on('submit', opts.child, function (event) {
+                    event.preventDefault();
 
-(function(jQuery){
-	jQuery.fn.extend({
-		saveformdata : function(options){
+                    var data = (opts.data != '') ? opts.data : $(this).serialize();
+                    var url = (opts.sbmtURL != '') ? opts.sbmtURL : $(this).attr('action');
+                    var savedatamsgcontainer = $(opts.element);
 
-			var defaults = {
-				element : (typeof(options) === 'string') ? options : '#error-message',
-				child : '',
-				sbmtURL : '',
-				callback : function(param){},
-				cbOnfail : false,
-				reloadHtml : false,
-				rlUrl : '',
-				rlContainer : '',
-				closeModal : false,
-				mdElement : '.modal',
-				clrForm : '',
-				data : ''
-			};
+                    savedatamsgcontainer.html('Procesando, por favor espere...').removeClass().addClass('alert alert-info flying-message');
 
-			var opts = jQuery.extend({}, defaults, options); 
+                    savedatamsgcontainer.slideDown('slow');
 
-			this.each(function(){
-				var obj = jQuery(this);
-				obj.on('submit', opts.child, function(event){
-				event.preventDefault();
-
-				var data = (opts.data != '') ? opts.data :  jQuery(this).serialize();
-				var url = (opts.sbmtURL != '') ? opts.sbmtURL : jQuery(this).attr('action');
-				var savedatamsgcontainer  = jQuery(opts.element);
-
-				savedatamsgcontainer.html('Procesando, por favor espere...').removeClass().addClass('alert alert-info flying-message');
-
-                savedatamsgcontainer.slideDown('slow');
-
-                savedatamsgcontainer.on('click', function(){
-                    jQuery(this).slideUp('slow');
+                    savedatamsgcontainer.on('click', function () {
+                        jQuery(this).slideUp('slow');
                     });
 
-				jQuery.post(url, data, function( json ){
-						if(json.error){
-							savedatamsgcontainer.removeClass('alert-info').addClass('alert-danger').html(json.message);
-							}
-						else {
-							savedatamsgcontainer.removeClass('alert-info').addClass('alert-success').html(json.message);
-							}
-						}, 'json')
-					.done(function(response){
-						setTimeout(function(){ savedatamsgcontainer.slideUp('slow')}, 3000);
-						if(!response.error) {
-							if(opts.reloadhtml){
-								loadingBar.showBar(opts.rlContainer);
-								jQuery(opts.rlContainer).load(opts.rlUrl);
-								}
-							if(opts.clrForm != ''){
-								jQuery(opts.clrForm).each(function(){
-									this.reset();
-									})
-								}
-							if(opts.closeModal)
-								jQuery(opts.mdElement).modal('hide');
+                    $.post(url, data, function (json) {
+                            if (json.error) {
+                                savedatamsgcontainer.removeClass('alert-info').addClass('alert-danger').html(json.message);
+                            }
+                            else {
+                                savedatamsgcontainer.removeClass('alert-info').addClass('alert-success').html(json.message);
+                            }
+                        }, 'json')
+                        .done(function (response) {
+                            setTimeout(function () {
+                                savedatamsgcontainer.slideUp('slow')
+                            }, 3000);
+                            if (!response.error) {
+                                if (opts.reloadhtml) {
+                                    loadingBar.showBar(opts.rlContainer);
+                                    $(opts.rlContainer).load(opts.rlUrl);
+                                }
+                                if (opts.clrForm != '') {
+                                    $(opts.clrForm).each(function () {
+                                        this.reset();
+                                    })
+                                }
+                                if (opts.closeModal)
+                                    $(opts.mdElement).modal('hide');
 
-							if(typeof(opts.callback) === 'function'){
-								opts.callback.call(this, response);
-								}
-							} else {
-							if(opts.cbOnfail){
-								if(typeof(opts.callback === 'function')){
-									opts.callback.call(this, response);
-									}
-								}
-							}
-					})
-					.fail(function( jqxhr, textStatus, error ) {
-					    var err = textStatus + ", " + error;
-					    savedatamsgcontainer.removeClass('alert-info').addClass('alert-danger').html('Lo sentimos, hubo un problema al procesar tu solicitud ' + err);
-						})
-					})
-				})
-			}
-		});
-	})(jQuery);
+                                if (typeof(opts.callback) === 'function') {
+                                    opts.callback.call(this, response);
+                                }
+                            } else {
+                                if (opts.cbOnfail) {
+                                    if (typeof(opts.callback === 'function')) {
+                                        opts.callback.call(this, response);
+                                    }
+                                }
+                            }
+                        })
+                        .fail(function (jqxhr, textStatus, error) {
+                            var err = textStatus + ", " + error;
+                            savedatamsgcontainer.removeClass('alert-info').addClass('alert-danger').html('Lo sentimos, hubo un problema al procesar tu solicitud ' + err);
+                        })
+                })
+            })
+        }
+    });
+})(jQuery);
 
 (function ($) {
     "use strict";
@@ -211,25 +219,25 @@ loadingBar = loadingBar || (function(){
                 wordUppercase: function (options, word, score) {
                     return word.match(/[A-Z]/) && score;
                 },
-                wordOneNumber : function (options, word, score) {
+                wordOneNumber: function (options, word, score) {
                     return word.match(/\d+/) && score;
                 },
-                wordThreeNumbers : function (options, word, score) {
+                wordThreeNumbers: function (options, word, score) {
                     return word.match(/(.*[0-9].*[0-9].*[0-9])/) && score;
                 },
-                wordOneSpecialChar : function (options, word, score) {
+                wordOneSpecialChar: function (options, word, score) {
                     return word.match(/.[!,@,#,$,%,\^,&,*,?,_,~]/) && score;
                 },
-                wordTwoSpecialChar : function (options, word, score) {
+                wordTwoSpecialChar: function (options, word, score) {
                     return word.match(/(.*[!,@,#,$,%,\^,&,*,?,_,~].*[!,@,#,$,%,\^,&,*,?,_,~])/) && score;
                 },
-                wordUpperLowerCombo : function (options, word, score) {
+                wordUpperLowerCombo: function (options, word, score) {
                     return word.match(/([a-z].*[A-Z])|([A-Z].*[a-z])/) && score;
                 },
-                wordLetterNumberCombo : function (options, word, score) {
+                wordLetterNumberCombo: function (options, word, score) {
                     return word.match(/([a-zA-Z])/) && word.match(/([0-9])/) && score;
                 },
-                wordLetterNumberCharCombo : function (options, word, score) {
+                wordLetterNumberCharCombo: function (options, word, score) {
                     return word.match(/([a-zA-Z0-9].*[!,@,#,$,%,\^,&,*,?,_,~])|([!,@,#,$,%,\^,&,*,?,_,~].*[a-zA-Z0-9])/) && score;
                 }
             }
@@ -430,7 +438,7 @@ loadingBar = loadingBar || (function(){
         } else if (typeof method === "object" || !method) {
             result = methods.init.apply(this, arguments);
         } else {
-            $.error("Method " +  method + " does not exist on jQuery.pwstrength");
+            $.error("Method " + method + " does not exist on jQuery.pwstrength");
         }
         return result;
     };
